@@ -73,11 +73,11 @@
                 <form id="authForm" onsubmit="handleAuth(event)">
                     <div class="mb-3">
                         <label for="email" class="form-label">Alamat Email</label>
-                        <input type="email" class="form-control" id="email" placeholder="nama@email.com">
+                        <input type="email" class="form-control" id="email" placeholder="nama@email.com" required>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Kata Sandi</label>
-                        <input type="password" class="form-control" id="password" placeholder="Minimal 6 karakter">
+                        <input type="password" class="form-control" id="password" placeholder="Minimal 6 karakter" required>
                     </div>
                     <button type="submit" id="btnSubmitAuth" class="btn btn-primary w-100 mb-2">
                         <i class="fa-solid fa-right-to-bracket me-1"></i>Masuk
@@ -499,13 +499,20 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signInAnonymously, 
+            onAuthStateChanged, 
+            signOut,
+            sendEmailVerification // Import fungsi verifikasi email
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
             getFirestore, doc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, serverTimestamp, getDocs 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = { 
+        // Configuration Firebase Proyek Testing Baru
+        const firebaseConfig = {
             apiKey: "AIzaSyBLDFhTMZyRUkDd2vURAJYUhv0kXZtEBQ4",
             authDomain: "trading-journal-beta-dev.firebaseapp.com",
             projectId: "trading-journal-beta-dev",
@@ -577,8 +584,12 @@
             hideErrorAlert();
             document.getElementById('authTitle').innerText = isSignUpMode ? "Daftar Akun Baru" : "Masuk ke Jurnal Trading";
             document.getElementById('btnSubmitAuth').innerText = isSignUpMode ? "Daftar" : "Masuk";
+            document.getElementById('authToggleText').innerHTML = isSignUpMode ? 
+                'Sudah punya akun? <a href="#" onclick="toggleAuthMode(false)">Masuk di sini</a>' : 
+                'Belum punya akun? <a href="#" onclick="toggleAuthMode(true)">Daftar sekarang</a>';
         };
 
+        // Handling Auth & Verifikasi Email
         window.handleAuth = async function(e) {
             e.preventDefault();
             hideErrorAlert();
@@ -586,8 +597,15 @@
             const password = document.getElementById('password').value;
             try {
                 if (isSignUpMode) {
-                    await createUserWithEmailAndPassword(auth, email, password);
+                    // 1. Buat User Baru
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    
+                    // 2. Kirim Link Verifikasi ke Email
+                    await sendEmailVerification(userCredential.user);
+                    
+                    alert("Akun berhasil dibuat! Silakan periksa inbox atau folder spam di email kamu untuk melakukan verifikasi.");
                 } else {
+                    // Login Biasa
                     await signInWithEmailAndPassword(auth, email, password);
                 }
             } catch (err) { showErrorAlert(err.message); }
