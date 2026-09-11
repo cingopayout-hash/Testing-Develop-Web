@@ -589,27 +589,45 @@
                 'Belum punya akun? <a href="#" onclick="toggleAuthMode(true)">Daftar sekarang</a>';
         };
 
-        // Handling Auth & Verifikasi Email
-        window.handleAuth = async function(e) {
-            e.preventDefault();
-            hideErrorAlert();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            try {
-                if (isSignUpMode) {
-                    // 1. Buat User Baru
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    
-                    // 2. Kirim Link Verifikasi ke Email
-                    await sendEmailVerification(userCredential.user);
-                    
-                    alert("Akun berhasil dibuat! Silakan periksa inbox atau folder spam di email kamu untuk melakukan verifikasi.");
-                } else {
-                    // Login Biasa
-                    await signInWithEmailAndPassword(auth, email, password);
-                }
-            } catch (err) { showErrorAlert(err.message); }
-        };
+// Handling Auth & Verifikasi Email
+window.handleAuth = async function(e) {
+    e.preventDefault();
+    hideErrorAlert();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        if (isSignUpMode) {
+            // 1. Buat User Baru
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            // 2. Kirim Link Verifikasi ke Email
+            await sendEmailVerification(userCredential.user);
+            
+            // 3. Logout otomatis agar tidak langsung masuk ke dashboard
+            await signOut(auth);
+            
+            alert("Pendaftaran berhasil! Silakan periksa inbox/spam email kamu untuk verifikasi, lalu lakukan login.");
+            
+            // 4. Kembalikan form ke mode Login
+            toggleAuthMode(false);
+            document.getElementById('email').value = email; // Kembalikan email ke input
+            document.getElementById('password').value = '';
+        } else {
+            // Login Biasa
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            
+            // Opsional: Cek apakah email sudah diverifikasi saat login
+            if (!userCredential.user.emailVerified) {
+                await signOut(auth);
+                alert("Email kamu belum diverifikasi! Silakan cek inbox/spam email kamu terlebih dahulu.");
+                return;
+            }
+        }
+    } catch (err) { 
+        showErrorAlert(err.message); 
+    }
+};
 
         window.handleGuestLogin = async function() {
             hideErrorAlert();
