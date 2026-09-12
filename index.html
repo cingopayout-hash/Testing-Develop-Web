@@ -921,26 +921,32 @@
 function listenToJournalTrades() {
     if (unsubscribeTrades) unsubscribeTrades();
     
-    // Urutkan berdasarkan waktu simpan ke database (timestamp) secara Ascending (terlama ke terbaru)
+    // Ambil data tanpa kueri orderBy Firestore yang memicu error index
     const q = query(
-        collection(db, "users", currentUser.uid, "journals", activeJournalId, "trades"),
-        orderBy("timestamp", "asc")
+        collection(db, "users", currentUser.uid, "journals", activeJournalId, "trades")
     );
 
     unsubscribeTrades = onSnapshot(q, (snapshot) => {
         currentTrades = [];
         snapshot.forEach(docSnap => currentTrades.push({ id: docSnap.id, ...docSnap.data() }));
         
-        // Fallback opsional jika ada data lama yang belum memiliki field timestamp
+        // Urutkan berdasarkan timestamp secara ASCENDING (dari input terlama/pertama ke terbaru)
         currentTrades.sort((a, b) => {
-            const timeA = a.timestamp ? (a.timestamp.seconds || a.timestamp) : 0;
-            const timeB = b.timestamp ? (b.timestamp.seconds || b.timestamp) : 0;
+            const timeA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : 0;
+            const timeB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : 0;
+            
+            // Jika timestamp sama/tidak ada, gunakan tanggal sebagai perbandingan
+            if (timeA === timeB) {
+                return (a.date || '').localeCompare(b.date || '');
+            }
             return timeA - timeB;
         });
 
         renderDashboard(currentTrades);
         renderCalendar();
-            });
+    }, (error) => {
+        console.error("Firestore Listen Error: ", error);
+    });
 }
 
             unsubscribeTrades = onSnapshot(q, (snapshot) => {
